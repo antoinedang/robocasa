@@ -11,6 +11,7 @@ import robosuite
 from termcolor import colored
 
 import robocasa
+from robocasa.utils.asset_path_utils import rewrite_mjcf_asset_paths as path_change
 
 
 def playback_trajectory_with_env(
@@ -248,6 +249,7 @@ def reset_to(env, state):
             # v1.4 and above use the class-based edit_model_xml function
             xml = env.edit_model_xml(state["model"])
 
+        xml = path_change(xml)
         env.reset_from_xml_string(xml)
         env.sim.reset()
         # hide teleop visualization after restoring from model

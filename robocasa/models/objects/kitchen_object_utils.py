@@ -8,6 +8,7 @@ from robosuite.utils.mjcf_utils import find_elements, string_to_array
 
 import robocasa
 from robocasa.models.objects.kitch_min_obj import OBJ_CATEGORIES, OBJ_GROUPS
+from robocasa.utils.asset_path_utils import normalize_robocasa_asset_path
 
 BASE_ASSET_ZOO_PATH = os.path.join(robocasa.models.assets_root, "objects")
 
@@ -101,7 +102,9 @@ class ObjCat:
                     model_name = os.path.basename(root)
                     if model_name in self.exclude:
                         continue
-                    cat_mjcf_paths.append(os.path.join(root, "model.xml"))
+                    cat_mjcf_paths.append(
+                        normalize_robocasa_asset_path(os.path.join(root, "model.xml"))
+                    )
         self.mjcf_paths = sorted(cat_mjcf_paths)
         # if cat_mjcf_paths == []: breakpoint()
 
@@ -246,7 +249,9 @@ def sample_kitchen_object(
         )
 
         # check if object size is within bounds
-        mjcf_path = info["mjcf_path"]
+        mjcf_path = normalize_robocasa_asset_path(info["mjcf_path"])
+        info["mjcf_path"] = mjcf_path
+        mjcf_kwargs["mjcf_path"] = mjcf_path
         if mjcf_path in sampled_objects:
             continue  # Skip this object and sample again
 
@@ -337,7 +342,7 @@ def sample_kitchen_object_helper(
 
     # option to spawn specific object instead of sampling from a group
     if isinstance(groups, str) and groups.endswith(".xml"):
-        mjcf_path = groups
+        mjcf_path = normalize_robocasa_asset_path(groups)
         # reverse look up mjcf_path to category
         mjcf_kwargs = dict()
         cat = None
@@ -434,7 +439,7 @@ def sample_kitchen_object_helper(
             / sum(len(choices[reg]) for reg in obj_registries),
         )
 
-        mjcf_path = rng.choice(choices[chosen_reg])
+        mjcf_path = normalize_robocasa_asset_path(rng.choice(choices[chosen_reg]))
         mjcf_kwargs = OBJ_CATEGORIES[cat][chosen_reg].get_mjcf_kwargs()
         mjcf_kwargs["mjcf_path"] = mjcf_path
 
