@@ -323,7 +323,9 @@ def playback_dataset(args):
 
         env_kwargs = env_meta["env_kwargs"]
         env_kwargs["env_name"] = env_meta["env_name"]
-        env_kwargs["has_renderer"] = False
+        env_kwargs["has_renderer"] = args.render
+        if args.render:
+            env_kwargs["render_camera"] = args.render_image_names
         env_kwargs["renderer"] = "mjviewer"
         env_kwargs["has_offscreen_renderer"] = write_video
         env_kwargs["use_camera_obs"] = False
@@ -491,11 +493,7 @@ def get_playback_args():
         "--render_image_names",
         type=str,
         nargs="+",
-        default=[
-            "robot0_agentview_left",
-            "robot0_agentview_right",
-            "robot0_eye_in_hand",
-        ],
+        default=["robot0_leftview"],
         help="(optional) camera name(s) / image observation(s) to use for rendering on-screen or to video. Default is"
         "None, which corresponds to a predefined camera for each env type",
     )
