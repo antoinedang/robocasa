@@ -27,6 +27,7 @@ def playback_trajectory_with_env(
     verbose=False,
     camera_height=512,
     camera_width=512,
+    playback_fps=20,
 ):
     """
     Helper function to playback a single trajectory using the simulator environment.
@@ -101,9 +102,8 @@ def playback_trajectory_with_env(
             # so that mujoco viewer renders
             env.viewer.update()
 
-            max_fr = 60
             elapsed = time.time() - start
-            diff = 1 / max_fr - elapsed
+            diff = 1 / playback_fps - elapsed
             if diff > 0:
                 time.sleep(diff)
 
@@ -365,61 +365,66 @@ def playback_dataset(args):
     if write_video:
         video_writer = imageio.get_writer(args.video_path, fps=20)
 
-    for ind in range(len(demos)):
-        ep = demos[ind]
-        print(colored("\nPlaying back episode: {}".format(ep), "yellow"))
+    try:
+        while True:
+            for ind in range(len(demos)):
+                ep = demos[ind]
+                print(colored("\nPlaying back episode: {}".format(ep), "yellow"))
 
-        if args.use_obs:
-            playback_trajectory_with_obs(
-                traj_grp=f["data/{}".format(ep)],
-                video_writer=video_writer,
-                video_skip=args.video_skip,
-                image_names=args.render_image_names,
-                first=args.first,
-            )
-            continue
+                if args.use_obs:
+                    playback_trajectory_with_obs(
+                        traj_grp=f["data/{}".format(ep)],
+                        video_writer=video_writer,
+                        video_skip=args.video_skip,
+                        image_names=args.render_image_names,
+                        first=args.first,
+                    )
+                    continue
 
-        # prepare initial state to reload from
-        states = f["data/{}/states".format(ep)][()]
-        initial_state = dict(states=states[0])
-        initial_state["model"] = f["data/{}".format(ep)].attrs["model_file"]
-        initial_state["ep_meta"] = f["data/{}".format(ep)].attrs.get("ep_meta", None)
+                states = f["data/{}/states".format(ep)][()]
+                initial_state = dict(states=states[0])
+                initial_state["model"] = f["data/{}".format(ep)].attrs["model_file"]
+                initial_state["ep_meta"] = f["data/{}".format(ep)].attrs.get("ep_meta", None)
 
-        if args.extend_states:
-            states = np.concatenate((states, [states[-1]] * 50))
+                if args.extend_states:
+                    states = np.concatenate((states, [states[-1]] * 50))
 
-        # supply actions if using open-loop action playback
-        actions = None
-        assert not (
-            args.use_actions and args.use_abs_actions
-        )  # cannot use both relative and absolute actions
-        if args.use_actions:
-            actions = f["data/{}/actions".format(ep)][()]
-        elif args.use_abs_actions:
-            actions = f["data/{}/actions_abs".format(ep)][()]  # absolute actions
+                actions = None
+                assert not (
+                    args.use_actions and args.use_abs_actions
+                )  # cannot use both relative and absolute actions
+                if args.use_actions:
+                    actions = f["data/{}/actions".format(ep)][()]
+                elif args.use_abs_actions:
+                    actions = f["data/{}/actions_abs".format(ep)][()]
 
-        playback_trajectory_with_env(
-            env=env,
-            initial_state=initial_state,
-            states=states,
-            actions=actions,
-            render=args.render,
-            video_writer=video_writer,
-            video_skip=args.video_skip,
-            camera_names=args.render_image_names,
-            first=args.first,
-            verbose=args.verbose,
-            camera_height=args.camera_height,
-            camera_width=args.camera_width,
-        )
+                playback_trajectory_with_env(
+                    env=env,
+                    initial_state=initial_state,
+                    states=states,
+                    actions=actions,
+                    render=args.render,
+                    video_writer=video_writer,
+                    video_skip=args.video_skip,
+                    camera_names=args.render_image_names,
+                    first=args.first,
+                    verbose=args.verbose,
+                    camera_height=args.camera_height,
+                    camera_width=args.camera_width,
+                    playback_fps=args.playback_fps,
+                )
 
-    f.close()
-    if write_video:
-        print(colored(f"Saved video to {args.video_path}", "green"))
-        video_writer.close()
-
-    if env is not None:
-        env.close()
+            if not args.loop:
+                break
+    except KeyboardInterrupt:
+        print(colored("\nStopping playback...", "yellow"))
+    finally:
+        f.close()
+        if write_video:
+            print(colored(f"Saved video to {args.video_path}", "green"))
+            video_writer.close()
+        if env is not None:
+            env.close()
 
 
 def get_playback_args():
@@ -484,9 +489,11 @@ def get_playback_args():
     parser.add_argument(
         "--video_skip",
         type=int,
-        default=5,
+        default=1,
         help="render frames to video every n steps",
     )
+    parser.add_argument("--playback_fps", type=float, default=20)
+    parser.add_argument("--loop", action="store_true", help="repeat selected episodes continuously")
 
     # camera names to render, or image observations to use for writing to video
     parser.add_argument(

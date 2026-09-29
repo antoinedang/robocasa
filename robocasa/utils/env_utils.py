@@ -38,6 +38,12 @@ def create_env(
         controller=None,
         robot=robots if isinstance(robots, str) else robots[0],
     )
+    if isinstance(camera_names, str):
+        render_camera = camera_names
+    elif camera_names:
+        render_camera = camera_names[0]
+    else:
+        render_camera = None
 
     env_kwargs = dict(
         env_name=env_name,
@@ -46,8 +52,9 @@ def create_env(
         camera_names=camera_names,
         camera_widths=camera_widths,
         camera_heights=camera_heights,
+        render_camera=render_camera,
         has_renderer=render_onscreen,
-        has_offscreen_renderer=(not render_onscreen),
+        has_offscreen_renderer=True,
         ignore_done=True,
         use_object_obs=True,
         use_camera_obs=(not render_onscreen),
